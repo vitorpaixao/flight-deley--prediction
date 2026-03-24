@@ -66,7 +66,7 @@ graph TD
         MOD2[modules/evaluation.py]
     end
 
-    PARQUET[(flights_clean.parquet<br/>169 MB)]
+    PARQUET[(flights_clean.parquet<br/>124,5 MB)]
 
     CSV1 & CSV2 & CSV3 --> NB1
     CSV1 & CSV2 & CSV3 --> NB2
@@ -95,7 +95,7 @@ flight-delay-prediction/
 │   ├── flights.csv                  # ~5.8M voos (não versionado)
 │   ├── airports.csv                 # Metadados dos aeroportos
 │   ├── airlines.csv                 # Códigos das companhias
-│   └── flights_clean.parquet        # Dataset limpo (gerado por 2-limpeza)
+│   └── flights_clean.parquet        # Dataset limpo (gerado por 2-ETL)
 │
 ├── 📁 modules/
 │   ├── __init__.py
@@ -145,63 +145,13 @@ graph LR
 | # | Notebook | Descrição | Entrada | Saída |
 |:-:|----------|-----------|---------|-------|
 | 1 | **`1-EDA_exploratorio.ipynb`** | Exploração dos dados brutos: joins, missing values (4 padrões), distribuições, atrasos por companhia/mês/hora, top aeroportos, correlações | CSVs brutos | Insights e decisões de limpeza |
-| 2 | **`2-limpeza.ipynb`** | Pipeline de limpeza completo: drops, filtros, imputação, feature engineering | CSVs brutos | `flights_clean.parquet` (169 MB) |
+| 2 | **`2-ETL.ipynb`** | Pipeline de limpeza completo: drops, filtros, imputação, feature engineering | CSVs brutos | `flights_clean.parquet` |
 | 3 | **`3-EDA_clean.ipynb`** | Análise dos dados limpos: distribuições das features, balance de classes, padrões temporais/geográficos, verificação da feature matrix | Parquet | Validação pré-modelagem |
 | 4 | **`4-modelagem_nao_supervisionada.ipynb`** | PCA nas causas de atraso + K-Means em perfis de aeroporto | Parquet | Clusters e componentes |
 | 5 | **`5-modelagem_supervisionada.ipynb`** | Classificação (LR vs XGBoost) + Regressão (LinReg vs LightGBM vs XGBoost) — 5 modelos | Parquet | Métricas comparativas |
-| 6 | **`6-apresentacao.ipynb`** | Resumo executivo para vídeo de apresentação (5-10 min) | Parquet | Slides e gráficos-chave |
+| 6 | **`6-conclusoes.ipynb`** | ... | Parquet | Métricas comparativas |
 
-> **Importante**: O notebook `2-limpeza.ipynb` **deve ser executado antes** dos notebooks 3-6, pois gera o arquivo `flights_clean.parquet` que os demais consomem.
-
----
-
-## 🧹 Pipeline de Limpeza
-
-O notebook `2-limpeza.ipynb` transforma os dados brutos em dados prontos para modelagem:
-
-| Etapa | Operação | Registros | Justificativa |
-|:-----:|----------|:---------:|---------------|
-| 0 | Dados brutos + joins | 5.819.079 | 3 CSVs unificados via left join |
-| 1 | `drop(YEAR, TAIL_NUMBER, FLIGHT_NUMBER)` | 5.819.079 | Constante (YEAR) e identificadores de alta cardinalidade |
-| 2 | Remover cancelados (`CANCELLED == 0`) | 5.729.195 | Cancelados ≠ atrasados (-89.884 voos) |
-| 3 | `fillna(0)` nas 5 causas de atraso | 5.729.195 | NaN = "sem atraso desta causa" (by design) |
-| 4 | `dropna(DEPARTURE_DELAY)` | 5.729.195 | Sem dados faltantes após filtro de cancelados |
-| 5 | `fillna("Desconhecido")` cols de join | 5.729.195 | ~8,3% aeroportos com código FAA sem match IATA |
-| 6 | Feature engineering | 5.729.195 | DEP_HOUR, SEASON, IS_WEEKEND, IS_DELAYED |
-| 7 | Export Parquet | 5.729.195 × 41 | Compressão snappy → 169 MB |
-
----
-
-## 🤖 Modelos Implementados
-
-### Classificação — `IS_DELAYED` (atraso > 15 min)
-
-| Modelo | Tipo | Tratamento de Imbalance | Destaque |
-|--------|------|------------------------|----------|
-| **Regressão Logística** | Baseline linear | `class_weight='balanced'` | Interpretável, coeficientes |
-| **XGBoost Classifier** | Gradient Boosting | `scale_pos_weight=4.6` | Não-linearidades, feature importance |
-
-### Regressão — `DEPARTURE_DELAY` (minutos, delay > 0)
-
-| Modelo | Tipo | Destaque |
-|--------|------|----------|
-| **Regressão Linear** | Baseline linear | Interpretável |
-| **LightGBM Regressor** | Gradient Boosting (histogram) | 2-3x mais rápido que XGBoost |
-| **XGBoost Regressor** | Gradient Boosting | Comparação direta com LightGBM |
-
-### Não Supervisionada
-
-| Técnica | Aplicação | Objetivo |
-|---------|-----------|----------|
-| **PCA** | 5 causas de atraso | Encontrar eixos principais de variação |
-| **K-Means** | Perfis de aeroporto | Agrupar aeroportos com comportamento similar |
-
-### Features utilizadas (20)
-
-```
-Numéricas (6):  MONTH, DAY_OF_WEEK, DEP_HOUR, SEASON, IS_WEEKEND, DISTANCE
-Categóricas (14): AIRLINE_AA, AIRLINE_AS, ..., AIRLINE_WN  (one-hot encoding)
-```
+> **Importante**: O notebook `2-ETL.ipynb` **deve ser executado antes** dos notebooks 3-6, pois gera o arquivo `flights_clean.parquet` que os demais consomem.
 
 ---
 
@@ -217,6 +167,74 @@ Categóricas (14): AIRLINE_AA, AIRLINE_AS, ..., AIRLINE_WN  (one-hot encoding)
 | **Aeroportos** | 322+ aeroportos de origem |
 | **Target (classificação)** | `IS_DELAYED` = `DEPARTURE_DELAY > 15 min` |
 | **Balance de classes** | 82,3% pontuais / 17,7% atrasados |
+
+---
+
+## 🪸 ETL
+
+### Drops
+
+O notebook `2-ETL.ipynb` transforma os dados brutos em dados prontos para modelagem:
+
+| Etapa | Operação | Registros | Colunas | Justificativa |
+|:-----:|----------|:---------:|:-------:|---------------|
+| 0 | Dados brutos + joins (airlines + airports) | 5.819.079 | 42 | 3 CSVs unificados via left join |
+| 1 | Drop 11 colunas não-preditivas* | 5.819.079 | 31 | YEAR (constante), TAIL/FLIGHT_NUMBER (alta cardinalidade), colunas pós-decolagem (TAXI_OUT, WHEELS_OFF, AIR_TIME, WHEELS_ON, TAXI_IN) e nomes redundantes dos joins |
+| 2 | Remover cancelados + drop cols | 5.729.195 | 29 | `CANCELLED == 0` → -89.884 voos (1,5%); drop CANCELLED e CANCELLATION_REASON |
+| 3 | `fillna(0)` nas 5 causas de atraso | 5.729.195 | 29 | NaN = "sem atraso desta causa" (by design, ~82% NaN) |
+| 4 | `dropna(DEPARTURE_DELAY)` | 5.729.195 | 29 | 0 registros perdidos (já filtrados no passo 2) |
+| 5 | `fillna` colunas de join | 5.729.195 | 29 | ~8,3% aeroportos sem match no join |
+| 6 | Feature engineering (10 variáveis) | 5.729.195 | 39 | DEP_HOUR, SEASON, IS_WEEKEND, IS_SHORT/LONG_DISTANCE, IS_MORNING/AFTERNOON/NIGHT, IS_HOLIDAY, IS_DELAYED |
+| 7 | Export Parquet (snappy) | 5.729.195 × 39 | — | ~2,4 GB (CSV) → 124,5 MB |
+
+### Feature Engineering
+
+| Feature | Derivação | Justificativa |
+|---------|-----------|---------------|
+| `DEP_HOUR` | `SCHEDULED_DEPARTURE // 100` | Hora de partida agrupada — padrão de atraso varia ao longo do dia |
+| `SEASON` | Mapeamento de MONTH → 1-4 | Sazonalidade (inverno/primavera/verão/outono) |
+| `IS_WEEKEND` | `DAY_OF_WEEK >= 6` | Padrão de tráfego diferente em fins de semana |
+| `IS_SHORT_DISTANCE` | `DISTANCE <= 373` (Q1) | Voos regionais curtos (~25% dos voos) |
+| `IS_LONG_DISTANCE` | `DISTANCE >= 1066` (Q3) | Voos de longa distância (~25% dos voos) |
+| `IS_MORNING` | `DEP_HOUR` entre 5–11 | Período matutino (~42% dos voos) |
+| `IS_AFTERNOON` | `DEP_HOUR` entre 12–17 | Período vespertino (~38% dos voos) |
+| `IS_NIGHT` | `DEP_HOUR` fora de 5–17 | Período noturno (~20% dos voos) |
+| `IS_HOLIDAY` | Janela de 3 dias em torno de feriados federais EUA 2015 | Captura efeito de viagem em feriados |
+| `IS_DELAYED` | `DEPARTURE_DELAY > 15` | Target binário para classificação (limiar FAA de 15 min) |
+
+---
+
+## 🤖 Modelos Implementados
+
+### Classificação — `IS_DELAYED` (atraso > 15 min)
+
+| Modelo | Tipo | Imbalance | Hiperparâmetros | Tempo |
+|--------|------|-----------|-----------------|:-----:|
+| **Regressão Logística** | Baseline linear | `class_weight='balanced'` | solver=saga, max_iter=1000 | ~41 min |
+| **XGBoost Classifier** | Gradient Boosting | `scale_pos_weight=4.6` | 300 trees, depth=6, lr=0.1 | ~33 s |
+
+### Regressão — `DEPARTURE_DELAY` (minutos, delay > 0)
+
+| Modelo | Tipo | Hiperparâmetros | Tempo |
+|--------|------|-----------------|:-----:|
+| **Regressão Linear** | Baseline linear | OLS | < 1 s |
+| **LightGBM Regressor** | Gradient Boosting (histogram) | 300 trees, depth=6, lr=0.1 | ~3 s |
+| **XGBoost Regressor** | Gradient Boosting | 300 trees, depth=6, lr=0.1 | ~9 s |
+
+### Não Supervisionada
+
+| Técnica | Aplicação | Resultado |
+|---------|-----------|-----------|
+| **PCA** | 5 causas de atraso (voos atrasados) | PC1 47%, PC2 24%, PC3 18% — 3 componentes explicam ~89% da variância |
+| **K-Means** | Perfis de aeroporto (297 com ≥1000 voos) | k=2 (silhouette 0,49): baixo atraso vs alto atraso |
+
+### Features utilizadas (26)
+
+```
+Numéricas (12): MONTH, DAY_OF_WEEK, DEP_HOUR, SEASON, IS_WEEKEND, DISTANCE,
+                IS_SHORT_DISTANCE, IS_LONG_DISTANCE, IS_MORNING, IS_AFTERNOON, IS_NIGHT, IS_HOLIDAY
+Categóricas (14): AIRLINE dummies (one-hot encoding)
+```
 
 ---
 
@@ -261,10 +279,10 @@ uv run jupyter lab
 ### 5. Executar notebooks na ordem
 
 ```
-1-EDA_exploratorio  →  2-limpeza  →  3-EDA_clean  →  4/5 (qualquer ordem)  →  6-apresentacao
+1-EDA_exploratorio  →  2-ETL  →  3-EDA_clean  →  4/5 (qualquer ordem)  →  6-conclusoes
 ```
 
-> **Nota**: O notebook `2-limpeza` gera o arquivo `flights_clean.parquet` (~169 MB). Os notebooks 3-6 dependem deste arquivo.
+> **Nota**: O notebook `2-ETL` gera o arquivo `flights_clean.parquet` (~124,5 MB). Os notebooks 3-6 dependem deste arquivo.
 
 ---
 
