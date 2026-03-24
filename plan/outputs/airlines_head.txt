@@ -1,0 +1,6 @@
+  IATA_CODE                 AIRLINE
+0        UA   United Air Lines Inc.
+1        AA  American Airlines Inc.
+2        US         US Airways Inc.
+3        F9  Frontier Airlines Inc.
+4        B6         JetBlue Airways
