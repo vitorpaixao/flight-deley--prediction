@@ -8,8 +8,11 @@ def load_flights_clean(path="../data/flights_clean.parquet") -> pd.DataFrame:
 
 
 def _build_features(df: pd.DataFrame) -> pd.DataFrame:
-    """Constrói a feature matrix com 20 features (6 numéricas + 14 airline dummies)."""
-    feature_cols = ["MONTH", "DAY_OF_WEEK", "DEP_HOUR", "SEASON", "IS_WEEKEND", "DISTANCE"]
+    """Constrói a feature matrix com 26 features (12 numéricas + 14 airline dummies)."""
+    feature_cols = ["MONTH", "DAY_OF_WEEK", "DEP_HOUR", "SEASON", "IS_WEEKEND", "DISTANCE",
+                    "IS_SHORT_DISTANCE", "IS_LONG_DISTANCE",
+                    "IS_MORNING", "IS_AFTERNOON", "IS_NIGHT",
+                    "IS_HOLIDAY"]
     airline_dummies = pd.get_dummies(df["AIRLINE"], prefix="AIRLINE")
     return pd.concat([df[feature_cols], airline_dummies], axis=1)
 

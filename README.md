@@ -128,8 +128,8 @@ Os notebooks são **numerados na ordem de execução**. Siga esta sequência:
 
 ```mermaid
 graph LR
-    A["1️⃣ EDA Exploratório"] --> B["2️⃣ Limpeza"]
-    B --> C["3️⃣ EDA Clean"]
+    A["1️⃣ EDA Exploratório"] --> B["2️⃣ ETL"]
+    B --> C["3️⃣ EDA ETL"]
     C --> D["4️⃣ Não Supervisionada"]
     C --> E["5️⃣ Supervisionada"]
     D & E --> F["6️⃣ Apresentação"]
