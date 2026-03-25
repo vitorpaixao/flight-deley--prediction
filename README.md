@@ -27,67 +27,16 @@ O objetivo é aplicar técnicas de ciência de dados e machine learning ao datas
 
 ---
 
-## 🎯 Objetivos
+### Estrutura de Arquivos
 
 | Requisito | Status | Notebook |
 |-----------|--------|----------|
 | EDA com estatísticas descritivas e visualizações | ✅ | `1-EDA_exploratorio.ipynb` / `3-EDA_clean.ipynb` |
-| Tratamento de valores ausentes | ✅ | `2-limpeza.ipynb` |
+| Tratamento de valores ausentes | ✅ | `2-ETL.ipynb` |
 | Modelagem supervisionada (2+ algoritmos) | ✅ | `5-modelagem_supervisionada.ipynb` |
 | Modelagem não supervisionada | ✅ | `4-modelagem_nao_supervisionada.ipynb` |
 | Apresentação crítica dos resultados | ✅ | `6-apresentacao.ipynb` |
-| Feature engineering (variáveis derivadas) | ✅ | `2-limpeza.ipynb` |
-| Análise por aeroporto, companhia e estado | ✅ | `1-EDA_exploratorio.ipynb` / `3-EDA_clean.ipynb` |
-| Padrões sazonais e horários críticos | ✅ | `1-EDA_exploratorio.ipynb` |
 
----
-
-## 🏗️ Arquitetura do Projeto
-
-```mermaid
-graph TD
-    subgraph Dados Brutos
-        CSV1[flights.csv<br/>5.8M registros]
-        CSV2[airports.csv]
-        CSV3[airlines.csv]
-    end
-
-    subgraph Pipeline de Notebooks
-        NB1["📊 1-EDA_exploratorio<br/>Exploração dados brutos"]
-        NB2["🧹 2-limpeza<br/>Limpeza + Feature Eng."]
-        NB3["📈 3-EDA_clean<br/>Análise dados limpos"]
-        NB4["🔍 4-modelagem_nao_supervisionada<br/>PCA + K-Means"]
-        NB5["🤖 5-modelagem_supervisionada<br/>Classificação + Regressão"]
-        NB6["🎬 6-apresentacao<br/>Resumo para vídeo"]
-    end
-
-    subgraph Módulos Python
-        MOD1[modules/data_loader.py]
-        MOD2[modules/evaluation.py]
-    end
-
-    PARQUET[(flights_clean.parquet<br/>124,5 MB)]
-
-    CSV1 & CSV2 & CSV3 --> NB1
-    CSV1 & CSV2 & CSV3 --> NB2
-    NB2 --> PARQUET
-    PARQUET --> NB3
-    PARQUET --> NB4
-    PARQUET --> NB5
-    PARQUET --> NB6
-    MOD1 --> NB3 & NB4 & NB5 & NB6
-    MOD2 --> NB5
-
-    style PARQUET fill:#2d6a4f,color:#fff,stroke:#1b4332
-    style NB1 fill:#264653,color:#fff
-    style NB2 fill:#264653,color:#fff
-    style NB3 fill:#264653,color:#fff
-    style NB4 fill:#264653,color:#fff
-    style NB5 fill:#264653,color:#fff
-    style NB6 fill:#264653,color:#fff
-```
-
-### Estrutura de Arquivos
 
 ```
 flight-delay-prediction/
@@ -132,7 +81,7 @@ graph LR
     B --> C["3️⃣ EDA ETL"]
     C --> D["4️⃣ Não Supervisionada"]
     C --> E["5️⃣ Supervisionada"]
-    D & E --> F["6️⃣ Apresentação"]
+    D & E --> F["6️⃣ Conclusoes"]
 
     style A fill:#e76f51,color:#fff
     style B fill:#f4a261,color:#fff
@@ -227,14 +176,6 @@ O notebook `2-ETL.ipynb` transforma os dados brutos em dados prontos para modela
 |---------|-----------|-----------|
 | **PCA** | 5 causas de atraso (voos atrasados) | PC1 47%, PC2 24%, PC3 18% — 3 componentes explicam ~89% da variância |
 | **K-Means** | Perfis de aeroporto (297 com ≥1000 voos) | k=2 (silhouette 0,49): baixo atraso vs alto atraso |
-
-### Features utilizadas (26)
-
-```
-Numéricas (12): MONTH, DAY_OF_WEEK, DEP_HOUR, SEASON, IS_WEEKEND, DISTANCE,
-                IS_SHORT_DISTANCE, IS_LONG_DISTANCE, IS_MORNING, IS_AFTERNOON, IS_NIGHT, IS_HOLIDAY
-Categóricas (14): AIRLINE dummies (one-hot encoding)
-```
 
 ---
 
